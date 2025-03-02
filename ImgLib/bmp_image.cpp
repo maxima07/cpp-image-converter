@@ -2,6 +2,7 @@
 #include "pack_defines.h"
 
 #include <array>
+#include <iostream>
 #include <fstream>
 #include <string_view>
 
@@ -11,7 +12,9 @@ namespace img_lib {
 
 // функция вычисления отступа по ширине
 static int GetBMPStride(int w) {
-    return 4 * ((w * 3 + 3) / 4);
+    const int align = 4;     // Выравнивание до числа кратного 4
+    const int color_num = 3; // Колличество элементов цвета rgb (brg)
+    return align * ((w * color_num + 3) / align); // Прибавление 3 гарантирует, что округление будет вверх
 }
 
 PACKED_STRUCT_BEGIN BitmapFileHeader {
@@ -97,10 +100,17 @@ bool SaveBMP(const Path& file, const Image& image) {
     return ofs.good();
 }
 
+void CheckStream (const ifstream& ifs) {
+    if (!ifs.is_open() || ifs.fail()) {
+        cerr << "An error occurred while reading the file"s << endl;
+    }   
+}
+
 // напишите эту функцию
 Image LoadBMP(const Path& file) {
     // Открываем поток с флагом ios::binary поскольку будем читать данные в двоичном формате
     ifstream ifs(file, ios::binary);
+    CheckStream(ifs);
     
     // Создаем заголовки
     BitmapFileHeader file_header;
@@ -114,6 +124,7 @@ Image LoadBMP(const Path& file) {
     }
 
     ifs.read(reinterpret_cast<char*>(&info_header), sizeof(BitmapInfoHeader));
+    CheckStream(ifs);
 
     // Создаем пустое изображение
     Image result(info_header.BMP_IMAGE_WIDTH_, info_header.BMP_IMAGE_HEIGHT_, Color::Black());
@@ -138,6 +149,7 @@ Image LoadBMP(const Path& file) {
     for (int y = h-1; y >= 0; --y) {
         Color* line = result.GetLine(y);
         ifs.read(buffer.data(), stride);
+        CheckStream(ifs);
 
         // Порядок компонент в пикселе обратный: Blue, Green, Red
         for (int x = 0; x < w; ++x) {
