@@ -100,17 +100,21 @@ bool SaveBMP(const Path& file, const Image& image) {
     return ofs.good();
 }
 
-void CheckStream (const ifstream& ifs) {
+bool CheckStream (const ifstream& ifs) {
     if (!ifs.is_open() || ifs.fail()) {
         cerr << "An error occurred while reading the file"s << endl;
-    }   
+        return false;
+    }
+    return true; 
 }
 
 // напишите эту функцию
 Image LoadBMP(const Path& file) {
     // Открываем поток с флагом ios::binary поскольку будем читать данные в двоичном формате
     ifstream ifs(file, ios::binary);
-    CheckStream(ifs);
+    if (!CheckStream(ifs)) {
+        return {};
+    }
     
     // Создаем заголовки
     BitmapFileHeader file_header;
@@ -121,10 +125,13 @@ Image LoadBMP(const Path& file) {
 
     if (file_header.BMP_SIGN_[0] != 'B' || file_header.BMP_SIGN_[1] != 'M')  {
         return {};
+
     }
 
     ifs.read(reinterpret_cast<char*>(&info_header), sizeof(BitmapInfoHeader));
-    CheckStream(ifs);
+    if (!CheckStream(ifs)) {
+        return {};
+    }
 
     // Создаем пустое изображение
     Image result(info_header.BMP_IMAGE_WIDTH_, info_header.BMP_IMAGE_HEIGHT_, Color::Black());
@@ -149,7 +156,9 @@ Image LoadBMP(const Path& file) {
     for (int y = h-1; y >= 0; --y) {
         Color* line = result.GetLine(y);
         ifs.read(buffer.data(), stride);
-        CheckStream(ifs);
+        if (!CheckStream(ifs)) {
+            return {};
+        }
 
         // Порядок компонент в пикселе обратный: Blue, Green, Red
         for (int x = 0; x < w; ++x) {
